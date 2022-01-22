@@ -9,7 +9,7 @@
         "properties": {
             "name": {
                 "title": "Accessory Name",
-                "description": "Name for the accessory",
+                "description": "Name of the accessory",
                 "type": "string",
                 "required": true
             },
@@ -29,7 +29,7 @@
             },
             "disableContactSensor": {
                 "title": "Disable Extra Contact Sensor",
-                "description": "Enable if you do not want to use the contact sensor. The contact sensor can be configured in different modes, see below",
+                "description": "Enable if you do not want to use the contact sensor. The contact sensor can be configured in different modes",
                 "type": "boolean",
                 "default": true,
                 "required": false
@@ -45,11 +45,14 @@
                     { "title": "Contact closed only for 3 seconds after delay switch turns off", "enum": [4] }
                 ],
                 "default": 1,
+                "condition": {
+                    "functionBody":"return model.disableContactSensor === false;"
+                },
                 "required": false
             },
             "disableOccupancySensor": {
                 "title": "Disable Extra Occupancy Sensor",
-                "description": "Enable if you do not want to use the occupancy sensor. The occupancy sensor can be configured in different modes, see below",
+                "description": "Enable if you do not want to use the occupancy sensor. The occupancy sensor can be configured in different modes",
                 "type": "boolean",
                 "default": true,
                 "required": false
@@ -63,6 +66,9 @@
                     { "title": "Occupancy detected when delay switch is off", "enum": [2] }
                 ],
                 "default": 1,
+                "condition": {
+                    "functionBody":"return model.disableOccupancySensor === false;"
+                },
                 "required": false
             },
             "startOnReboot": {
