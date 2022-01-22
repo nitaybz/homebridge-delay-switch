@@ -20,8 +20,6 @@ function delaySwitch(log, config, api) {
     this.disableOccupancySensor = config['disableOccupancySensor'] ?? true;
     this.contactSensorMode = config['contactSensorMode'] || 1;
     this.occupancySensorMode = config['occupancySensorMode'] || 1;
-    this.log('disableContactSensor', this.disableContactSensor);
-    this.log('disableOccupancySensor', this.disableOccupancySensor);
 
     switch (this.contactSensorMode) {
         case 1: // Contact open when delay switch is on
