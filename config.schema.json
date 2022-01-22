@@ -15,21 +15,59 @@
             },
             "delay": {
                 "title": "Delay Time in Milliseconds",
-                "description": "Amount of time in milliseconds to wait since the switch is turned ON until the switch will be turned OFF and the sensor will trigger",
+                "description": "Amount of time in milliseconds to wait from when the switch is turned ON until the switch will be turned OFF and the sensor(s) will trigger",
                 "type": "integer",
                 "default": 5000,
                 "required": true
             },
             "disableSensor": {
                 "title": "Disable Extra Motion Sensor",
-                "description": "Enable if you have no use of the sensor and you're interested to use the switch only",
+                "description": "Enable if you do not want to use the motion sensor. The motion sensor detects motion for 3 seconds when the delay switch turns off",
                 "type": "boolean",
                 "default": false,
                 "required": false
             },
+            "disableContactSensor": {
+                "title": "Disable Extra Contact Sensor",
+                "description": "Enable if you do not want to use the contact sensor. The contact sensor can be configured in different modes, see below",
+                "type": "boolean",
+                "default": true,
+                "required": false
+            },
+            "contactSensorMode": {
+                "title": "Contact Sensor Mode",
+                "description": "Select the desired contact sensor mode",
+                "type": "integer",
+                "oneOf": [
+                    { "title": "Contact open when delay switch is on", "enum": [1] },
+                    { "title": "Contact closed when delay switch is on", "enum": [2] },
+                    { "title": "Contact open only for 3 seconds after delay switch turns off", "enum": [3] },
+                    { "title": "Contact closed only for 3 seconds after delay switch turns off", "enum": [4] }
+                ],
+                "default": 1,
+                "required": false
+            },
+            "disableOccupancySensor": {
+                "title": "Disable Extra Occupancy Sensor",
+                "description": "Enable if you do not want to use the occupancy sensor. The occupancy sensor can be configured in different modes, see below",
+                "type": "boolean",
+                "default": true,
+                "required": false
+            },
+            "occupancySensorMode": {
+                "title": "Occupancy Sensor Mode",
+                "description": "Select the desired occupancy sensor mode",
+                "type": "integer",
+                "oneOf": [
+                    { "title": "Occupancy detected when delay switch is on", "enum": [1] },
+                    { "title": "Occupancy detected when delay switch is off", "enum": [2] }
+                ],
+                "default": 1,
+                "required": false
+            },
             "startOnReboot": {
-                "title": "Turn ON when HomeBridge Restarts",
-                "description": "When Enabled, the switch will be turned ON and start the timer when HomeBridge server restarts",
+                "title": "Turn ON when Homebridge Restarts",
+                "description": "When Enabled, the switch will be turned ON and start the timer when the Homebridge server restarts",
                 "type": "boolean",
                 "default": false,
                 "required": false

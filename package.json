@@ -1,6 +1,6 @@
 {
   "name": "homebridge-delay-switch",
-  "version": "2.2.6",
+  "version": "2.3.0",
   "description": "Delay switches for Homebridge: https://github.com/nfarina/homebridge",
   "license": "MIT",
   "keywords": [
@@ -22,16 +22,16 @@
   },
   "funding": [
     {
-      "type" : "paypal",
-      "url" : "https://paypal.me/nitaybz"
+      "type": "paypal",
+      "url": "https://paypal.me/nitaybz"
     },
     {
-      "type" : "patreon",
-      "url" : "https://www.patreon.com/nitaybz"
+      "type": "patreon",
+      "url": "https://www.patreon.com/nitaybz"
     },
     {
-      "type" : "kofi",
-      "url" : "https://ko-fi.com/nitaybz"
+      "type": "kofi",
+      "url": "https://ko-fi.com/nitaybz"
     }
   ]
 }
