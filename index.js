@@ -76,7 +76,7 @@ delaySwitch.prototype.getServices = function () {
     
     if (!this.disableSensor){
         this.log('Adding Motion Sensor');
-        this.motionService = new Service.MotionSensor(this.name + ' Motion Trigger');
+        this.motionService = new Service.MotionSensor(this.name + ' Motion Sensor');
 
         this.motionService
             .getCharacteristic(Characteristic.MotionDetected)
@@ -87,7 +87,7 @@ delaySwitch.prototype.getServices = function () {
     // new ContactSensor
     if (!this.disableContactSensor){
         this.log('Adding Contact Sensor');
-        this.contactService = new Service.ContactSensor(this.name + ' Contact Trigger');
+        this.contactService = new Service.ContactSensor(this.name + ' Contact Sensor');
 
         this.contactService
             .getCharacteristic(Characteristic.ContactSensorState)
@@ -98,7 +98,7 @@ delaySwitch.prototype.getServices = function () {
     // new OccupancySensor
     if (!this.disableOccupancySensor){
         this.log('Adding Occupancy Sensor');
-        this.occupancyService = new Service.OccupancySensor(this.name + ' Occupancy Trigger');
+        this.occupancyService = new Service.OccupancySensor(this.name + ' Occupancy Sensor');
 
         this.occupancyService
             .getCharacteristic(Characteristic.OccupancyDetected)
