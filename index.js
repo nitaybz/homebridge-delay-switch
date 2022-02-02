@@ -15,40 +15,62 @@ function delaySwitch(log, config, api) {
     this.log = log;
     this.name = config['name'];
     this.delay = config['delay'];
-    this.disableSensor = config['disableSensor'] || false;
-    this.disableContactSensor = config['disableContactSensor'] ?? true;
-    this.disableOccupancySensor = config['disableOccupancySensor'] ?? true;
-    this.contactSensorMode = config['contactSensorMode'] || 1;
-    this.occupancySensorMode = config['occupancySensorMode'] || 1;
 
-    switch (this.contactSensorMode) {
-        case 1: // Contact open when delay switch is on
-        case 3: // Contact open only for 3 seconds after delay switch turns off
-            this.contactTriggered = Characteristic.ContactSensorState.CONTACT_NOT_DETECTED; // NAME was opened.
-            this.contactNotTriggered = Characteristic.ContactSensorState.CONTACT_DETECTED; // NAME was closed.
+
+    // if old config exists and sensor is enabled, set sensorMode=1 "Motion Sensor, activated at end of delay for 3s"
+    // map disableSensor=true to sensorMode=0
+    // map disableSensor=false or null to sensorMode=1 (default if config not found)
+    if (!(config['disableSensor'] ?? true)) {
+        this.sensorMode = 1; // 1 "Motion Sensor, activated at end of delay for 3s"
+    } else {
+        this.sensorMode = 0; // 0 None
+    }
+    // update sensorMode if new config exists
+    this.sensorMode = config['sensorMode'] || this.sensorMode; // new config from v2.3.0
+
+
+    switch (this.sensorMode) {
+        case 1: // 1 "Motion Sensor, activated at end of delay for 3s"  normal mode
+            this.sensorTriggered = true;
+            this.sensorNotTriggered = false;
             break;
-        case 2: // Contact closed when delay switch is on
-        case 4: // Contact closed only for 3 seconds after delay switch turns off
-            this.contactTriggered = Characteristic.ContactSensorState.CONTACT_NOT_DETECTED;
-            this.contactNotTriggered = Characteristic.ContactSensorState.CONTACT_DETECTED;
+
+        case 2: // 2 "Contact Sensor, opened at end of delay for 3s" 
+            this.sensorTriggered = Characteristic.ContactSensorState.CONTACT_NOT_DETECTED; // NAME was opened.
+            this.sensorNotTriggered = Characteristic.ContactSensorState.CONTACT_DETECTED; // NAME was closed.
             break;
-    }   
-    switch (this.occupancySensorMode) {
-        case 1: // Occupancy detected when delay switch is on
-            this.occupancyTriggered = Characteristic.OccupancyDetected.OCCUPANCY_DETECTED; // Occupancy detected in NAME.
-            this.occupancyNotTriggered = Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED; // no notification
+
+        case 3: // 3 "Contact Sensor, closed at end of delay for 3s" 
+            this.sensorTriggered = Characteristic.ContactSensorState.CONTACT_DETECTED; 
+            this.sensorNotTriggered = Characteristic.ContactSensorState.CONTACT_NOT_DETECTED; 
             break;
-        case 2: // Occupancy detected when delay switch is off
-            this.occupancyTriggered = Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED;
-            this.occupancyNotTriggered = Characteristic.OccupancyDetected.OCCUPANCY_DETECTED;
+        
+        case 4: // 4 "Contact Sensor, opened while delay switch is on" 
+            this.sensorTriggered = Characteristic.ContactSensorState.CONTACT_NOT_DETECTED;
+            this.sensorNotTriggered = Characteristic.ContactSensorState.CONTACT_DETECTED;
             break;
+
+        case 5: // 5 "Contact Sensor, closed while delay switch is on"
+            this.sensorTriggered = Characteristic.ContactSensorState.CONTACT_DETECTED;
+            this.sensorNotTriggered = Characteristic.ContactSensorState.CONTACT_NOT_DETECTED;
+            break;
+
+        case 6: // 6 "Occupancy Sensor, occupied while delay switch is on"
+            this.sensorTriggered = Characteristic.OccupancyDetected.OCCUPANCY_DETECTED; // Occupancy detected in NAME.
+            this.sensorNotTriggered = Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED; // no notification
+            break;
+        case 7: // 7 "Occupancy Sensor, occupied while delay switch is off"
+            this.sensorTriggered = Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED;
+            this.sensorNotTriggered = Characteristic.OccupancyDetected.OCCUPANCY_DETECTED;
+            break;
+
     }   
 
     this.startOnReboot = config['startOnReboot'] || false;
     this.timer;
     this.switchOn = false;
-    this.motionTriggered = false;
-    if (this.contactSensorMode == 1 || this.contactSensorMode == 3) {this.contactSensorState = this.contactNotTriggered;} else {this.contactSensorState = this.contactTriggered;}
+    this.sensorState = this.sensorNotTriggered;
+    if (this.contactSensorMode == 1 || this.contactSensorMode == 3) {this.contactSensorState = this.sensorNotTriggered;} else {this.contactSensorState = this.sensorTriggered;}
     if (this.occupancySensorMode == 1) {this.occupancySensorState = Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED;} else {this.occupancySensorState = Characteristic.OccupancyDetected.OCCUPANCY_DETECTED;}
     this.uuid = UUIDGen.generate(this.name)
 }
@@ -63,49 +85,50 @@ delaySwitch.prototype.getServices = function () {
 
 
     this.switchService = new Service.Switch(this.name);
-
-
     this.switchService.getCharacteristic(Characteristic.On)
         .on('get', this.getOn.bind(this))
         .on('set', this.setOn.bind(this));
 
-    if (this.startOnReboot)
-        this.switchService.setCharacteristic(Characteristic.On, true)
+    if (this.startOnReboot){
+        this.switchService.setCharacteristic(Characteristic.On, true);
+        this.sensorState=this.sensorNotTriggered;
+        }
     
     var services = [informationService, this.switchService]
+
+    switch (this.sensorMode) {
+        case 1: //  Motion Sensor 1
+            this.log('Adding Motion Sensor');
+            this.motionService = new Service.MotionSensor(this.name + ' Motion Sensor');
+            this.motionService
+                .getCharacteristic(Characteristic.MotionDetected)
+                .on('get', this.getMotion.bind(this));
+            services.push(this.motionService)
+            break;
+
+        case 2: // 2 "Contact Sensor, opened at end of delay for 3s"
+        case 3: // 3 "Contact Sensor, closed at end of delay for 3s"
+        case 4: // 4 "Contact Sensor, opened while delay switch is on"
+        case 5: // 5 "Contact Sensor, closed while delay switch is on"
+            this.log('Adding Contact Sensor');
+            this.contactService = new Service.ContactSensor(this.name + ' Contact Sensor');
+            this.contactService
+                .getCharacteristic(Characteristic.ContactSensorState)
+                .on('get', this.getContactSensorState.bind(this));
+            services.push(this.contactService)
+            break;
+
+        case 6: // Occupancy Sensor 6-7
+        case 7: // 
+            this.log('Adding Occupancy Sensor');
+            this.occupancyService = new Service.OccupancySensor(this.name + ' Occupancy Sensor');
+            this.occupancyService
+                .getCharacteristic(Characteristic.OccupancyDetected)
+                .on('get', this.getOccupancySensorState.bind(this));
+            services.push(this.occupancyService)
+            break;
+    }   
     
-    if (!this.disableSensor){
-        this.log('Adding Motion Sensor');
-        this.motionService = new Service.MotionSensor(this.name + ' Motion Sensor');
-
-        this.motionService
-            .getCharacteristic(Characteristic.MotionDetected)
-            .on('get', this.getMotion.bind(this));
-        services.push(this.motionService)
-    }
-
-    // new ContactSensor
-    if (!this.disableContactSensor){
-        this.log('Adding Contact Sensor');
-        this.contactService = new Service.ContactSensor(this.name + ' Contact Sensor');
-
-        this.contactService
-            .getCharacteristic(Characteristic.ContactSensorState)
-            .on('get', this.getContactSensorState.bind(this));
-        services.push(this.contactService)
-    }
-
-    // new OccupancySensor
-    if (!this.disableOccupancySensor){
-        this.log('Adding Occupancy Sensor');
-        this.occupancyService = new Service.OccupancySensor(this.name + ' Occupancy Sensor');
-
-        this.occupancyService
-            .getCharacteristic(Characteristic.OccupancyDetected)
-            .on('get', this.getOccupancySensorState.bind(this));
-        services.push(this.occupancyService)
-    }
-
     return services;
 
 }
@@ -115,21 +138,36 @@ delaySwitch.prototype.setOn = function (on, callback) {
 
     if (!on) {
         this.log('Stopping the Timer');
-    
         this.switchOn = false;
         clearTimeout(this.timer);
 
-        // set state of MotionSensor when switch turned off
-        this.motionTriggered = false; // no notification
-        if (!this.disableSensor) this.motionService.getCharacteristic(Characteristic.MotionDetected).updateValue(this.motionTriggered);
+        // set state of Sensor when delay switch turned OFF (manually)
+        switch (this.sensorMode) {
+            case 1: //  Motion Sensor 1, triggers only at end of delay, so always OFF when switch turns OFF
+                this.sensorState=this.sensorNotTriggered;
+                this.motionService.getCharacteristic(Characteristic.MotionDetected).updateValue(this.sensorState);
+                break;
+    
+            case 2: // 2 "Contact Sensor, opened at end of delay for 3s"
+            case 3: // 3 "Contact Sensor, closed at end of delay for 3s"
+                this.sensorState=this.sensorNotTriggered;
+                this.contactService.getCharacteristic(Characteristic.ContactSensorState).updateValue(this.sensorState);
+                break;
 
-        // set state of ContactSensor when switch turned off
-        if (this.contactSensorMode == 1 || this.contactSensorMode == 3) {this.contactSensorState = this.contactNotTriggered;} else {this.contactSensorState = this.contactTriggered;}
-        if (!this.disableContactSensor) this.contactService.getCharacteristic(Characteristic.ContactSensorState).updateValue(this.contactSensorState);
+            case 4: // 4 "Contact Sensor, opened while delay switch is on"
+            case 5: // 5 "Contact Sensor, closed while delay switch is on"
+                this.sensorState=this.sensorNotTriggered;
+                this.contactService.getCharacteristic(Characteristic.ContactSensorState).updateValue(this.sensorState);
+                break;
+    
+            case 6: // 6 "Occupancy Sensor, occupied while delay switch is on"
+            case 7: // 7 "Occupancy Sensor, occupied while delay switch is off"
+                this.sensorState=this.sensorNotTriggered;
+                this.occupancyService.getCharacteristic(Characteristic.OccupancyDetected).updateValue(this.sensorState);
+                break;
+        }   
+        
 
-        // set state of OccupancySensor when switch turned off
-        this.occupancySensorState = this.occupancyNotTriggered;
-        if (!this.disableOccupancySensor) this.occupancyService.getCharacteristic(Characteristic.OccupancyDetected).updateValue(this.occupancySensorState);
 
         
       } else {
@@ -137,14 +175,34 @@ delaySwitch.prototype.setOn = function (on, callback) {
         this.switchOn = true;
         clearTimeout(this.timer);
 
-        // set state of ContactSensor when switch turned on
-        if (this.contactSensorMode == 1 || this.contactSensorMode == 4) {this.contactSensorState = this.contactTriggered;} else {this.contactSensorState = this.contactNotTriggered;}
-        if (!this.disableContactSensor) this.contactService.getCharacteristic(Characteristic.ContactSensorState).updateValue(this.contactSensorState);
+        // set state of Sensor when delay switch turned ON
+        switch (this.sensorMode) {
+            case 1: //  Motion Sensor 1, triggers only at end of delay, so always OFF when switch turns ON
+                this.sensorState=this.sensorNotTriggered;
+                this.motionService.getCharacteristic(Characteristic.MotionDetected).updateValue(this.sensorState);
+                break;
+    
+            case 2: // 2 "Contact Sensor, opened at end of delay for 3s"
+            case 3: // 3 "Contact Sensor, closed at end of delay for 3s"
+                this.sensorState=this.sensorNotTriggered;
+                this.contactService.getCharacteristic(Characteristic.ContactSensorState).updateValue(this.sensorState);
+                break;
+    
+            case 4: // 4 "Contact Sensor, opened while delay switch is on"
+            case 5: // 5 "Contact Sensor, closed while delay switch is on"
+                this.sensorState=this.sensorTriggered;
+                this.contactService.getCharacteristic(Characteristic.ContactSensorState).updateValue(this.sensorState);
+                break;
+        
+            case 6: // 6 "Occupancy Sensor, occupied while delay switch is on"
+            case 7: // 7 "Occupancy Sensor, occupied while delay switch is off"
+                this.sensorState=this.sensorTriggered;
+                this.occupancyService.getCharacteristic(Characteristic.OccupancyDetected).updateValue(this.sensorState);
+                break;
+        }   
 
-        // set state of OccupancySensor when switch turned on
-        this.occupancySensorState = this.occupancyTriggered;
-        if (!this.disableOccupancySensor) this.occupancyService.getCharacteristic(Characteristic.OccupancyDetected).updateValue(this.occupancySensorState);
 
+        
 
         this.timer = setTimeout(function() {
             // fired after this.delay
@@ -152,38 +210,58 @@ delaySwitch.prototype.setOn = function (on, callback) {
             this.switchOn = false;
             this.switchService.getCharacteristic(Characteristic.On).updateValue(this.switchOn);
                 
-            if (!this.disableSensor || !this.disableContactSensor || !this.disableOccupancySensor) {
+            // trigger sensor if some sensor is enabled
+            if (this.sensorMode > 0) {
                 this.log('Triggering Sensor');
 
-                // set state of MotionSensor when delay timer fired
-                this.motionTriggered = true;
-                if (!this.disableSensor) this.motionService.getCharacteristic(Characteristic.MotionDetected).updateValue(this.motionTriggered);
-
-                // set state of ContactSensor when delay timer fired
-                if (this.contactSensorMode == 1 || this.contactSensorMode == 4) {this.contactSensorState = this.contactNotTriggered;} else {this.contactSensorState = this.contactTriggered;}
-                if (!this.disableContactSensor) this.contactService.getCharacteristic(Characteristic.ContactSensorState).updateValue(this.contactSensorState);
-
-                // set state of OccupancySensor when delay timer fired
-                this.occupancySensorState = this.occupancyNotTriggered;
-                if (!this.disableOccupancySensor) this.occupancyService.getCharacteristic(Characteristic.OccupancyDetected).updateValue(this.occupancySensorState);
-
-                setTimeout(function() {
-
-                    // set state of MotionSensor when sensor timeout fired
-                    this.motionTriggered = false;
-                    if (!this.disableSensor) this.motionService.getCharacteristic(Characteristic.MotionDetected).updateValue(this.motionTriggered);
-
-                    // set state of ContactSensor when sensor timeout fired
-                    if (this.contactSensorMode == 4) {this.contactSensorState = this.contactTriggered;} else {this.contactSensorState = this.contactNotTriggered;}
-                    if (!this.disableContactSensor) this.contactService.getCharacteristic(Characteristic.ContactSensorState).updateValue(this.contactSensorState);
-
-                    // set state of OccupancySensor when sensor timeout fired
-                    this.occupancySensorState = this.occupancyNotTriggered;
-                    if (!this.disableOccupancySensor) this.occupancyService.getCharacteristic(Characteristic.OccupancyDetected).updateValue(this.occupancySensorState);
-
-                    }.bind(this), 3000);
-            }
+                // set state of Sensor when delay switch has turned OFF at end of delay
+                switch (this.sensorMode) {
+                    case 1: //  Motion Sensor 1, triggers only at end of delay, so set ON
+                        this.sensorState=this.sensorTriggered;
+                        this.motionService.getCharacteristic(Characteristic.MotionDetected).updateValue(this.sensorState);
+                        break;
             
+                    case 2: // 2 "Contact Sensor, opened at end of delay for 3s"
+                    case 3: // 3 "Contact Sensor, closed at end of delay for 3s"
+                        this.sensorState=this.sensorTriggered;
+                        this.contactService.getCharacteristic(Characteristic.ContactSensorState).updateValue(this.sensorState);
+                        break;
+
+                    case 4: // 4 "Contact Sensor, opened while delay switch is on"
+                    case 5: // 5 "Contact Sensor, closed while delay switch is on"
+                        this.sensorState=this.sensorNotTriggered;
+                        this.contactService.getCharacteristic(Characteristic.ContactSensorState).updateValue(this.sensorState);
+                        break;
+            
+                    case 6: // 6 "Occupancy Sensor, occupied while delay switch is on"
+                    case 7: // 7 "Occupancy Sensor, occupied while delay switch is off"
+                        this.sensorState=this.sensorNotTriggered;
+                        this.occupancyService.getCharacteristic(Characteristic.OccupancyDetected).updateValue(this.sensorState);
+                        break;
+                }   
+
+                // only enable the timeout for sensorMode 1, 2 & 3
+                if (this.sensorMode < 4){
+                    setTimeout(function() {
+                        this.log('Turning off Sensor');
+
+                        // set state of Sensor when delay switch timeout has fired after end of delay
+                        switch (this.sensorMode) {
+                            case 1: //  Motion Sensor 1, triggered only at end of delay, so set OFF after timeout
+                                this.sensorState=this.sensorNotTriggered;
+                                this.motionService.getCharacteristic(Characteristic.MotionDetected).updateValue(this.sensorState);
+                                break;
+                    
+                            case 2: // 2 "Contact Sensor, opened at end of delay for 3s"
+                            case 3: // 3 "Contact Sensor, closed at end of delay for 3s"
+                                this.sensorState=this.sensorNotTriggered;
+                                this.contactService.getCharacteristic(Characteristic.ContactSensorState).updateValue(this.sensorState);
+                                break;
+                        }   
+    
+                    }.bind(this), 3000);
+                }
+            }
             
             }.bind(this), this.delay);
       }
@@ -198,13 +276,13 @@ delaySwitch.prototype.getOn = function (callback) {
 }
 
 delaySwitch.prototype.getMotion = function(callback) {
-    callback(null, this.motionTriggered);
+    callback(null, this.sensorState);
 }
 
 delaySwitch.prototype.getContactSensorState = function(callback) {
-    callback(null, this.contactSensorState);
+    callback(null, this.sensorState);
 }
 
 delaySwitch.prototype.getOccupancySensorState = function(callback) {
-    callback(null, this.occupancySensorState);
+    callback(null, this.sensorState);
 }
