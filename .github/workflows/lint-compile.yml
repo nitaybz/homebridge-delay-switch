@@ -1,0 +1,29 @@
+# This workflow lints and compiles the project.
+
+name: Lint and compile
+
+# By default, the workflow only runs when a pull_request's
+# activity type is opened, synchronize, or reopened.
+# See https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#pull_request
+on: pull_request
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+    - run: npm ci
+    - run: npm run lint
+
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+    - run: npm ci
+    - run: npm run build
