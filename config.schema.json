@@ -133,29 +133,11 @@
       "expandable": true,
       "expanded": true,
       "items": [
-        {
-          "type": "flex",
-          "flex-flow": "row wrap",
-          "items": [
-            "name"
-          ]
-        },
-        {
-          "type": "flex",
-          "flex-flow": "row wrap",
-          "items": [
-            "startOnReboot",
-            "delayOnStart"
-          ]
-        },
-        {
-          "type": "flex",
-          "flex-flow": "row wrap",
-          "items": [
-            "delay",
-            "delayUnit"
-          ]
-        }
+        "name",
+        "startOnReboot",
+        "delayOnStart",
+        "delay",
+        "delayUnit"
       ]
     },
     {
@@ -165,14 +147,8 @@
       "expandable": true,
       "expanded": false,
       "items": [
-        {
-          "type": "flex",
-          "flex-flow": "row wrap",
-          "items": [
-            "sensorType",
-            "flipSensorState"
-          ]
-        }
+        "sensorType",
+        "flipSensorState"
       ]
     },
     {
@@ -182,13 +158,7 @@
       "expandable": true,
       "expanded": false,
       "items": [
-        {
-          "type": "flex",
-          "flex-flow": "row wrap",
-          "items": [
-            "debug"
-          ]
-        }
+        "debug"
       ]
     }
   ]
