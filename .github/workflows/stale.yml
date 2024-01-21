@@ -1,0 +1,29 @@
+# Close stale issues after a defined period of time.
+#
+name: Close Stale Issues
+
+on:
+  issues:
+    types: [reopened]
+  schedule:
+  - cron: "30 4 * * *"
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Autoclose stale issues.
+      uses: actions/stale@v8
+      with:
+        days-before-close: 7
+        days-before-stale: 21
+        exempt-issue-labels: 'do-not-remove,in-progress'
+        exempt-pr-labels: 'do-not-remove,in-progress'
+        remove-stale-when-updated: true
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        stale-issue-label: 'stale'
+        stale-issue-message: 'This Issue was automatically marked as stale (out of date) because it had no activity recently. It will close in 7 days if there will be no new activity. Thank you for your contribution.'
+        close-issue-message: 'This Issue has automatically been closed due to no new activities. Once again, thank you for your contribution.'
+        stale-pr-label: 'stale'
+        stale-pr-message: 'This Pull Request was automatically marked as stale (out of date) because it had no activity recently. It will close in 7 days if there will be no new activity. Thank you for your contribution.'
+        close-pr-message: 'This Pull Request has automatically been closed due to no new activities. Once again, thank you for your contribution.'
