@@ -79,9 +79,11 @@ delaySwitch.prototype.getServices = function () {
 
 	this.switchService = new Service.Switch(this.name)
 	this.switchService.getCharacteristic(Characteristic.On)
-		.on('get', this.getOn.bind(this))
-		.on('set', this.setOn.bind(this))
-		.updateValue(this.startOnReboot)
+		.onGet(this.getOn.bind(this))
+		.onSet(this.setOn.bind(this))
+
+	if (this.startOnReboot)
+		this.switchService.setCharacteristic(Characteristic.On, true)
 
 	var services = [informationService, this.switchService]
 
@@ -107,9 +109,7 @@ delaySwitch.prototype.getServices = function () {
 
 		this.sensorService
 			.getCharacteristic(this.sensorCharacteristic)
-			.on('get', (callback) => {
-				callback(null, this.getSensorState())
-			})
+			.onGet(() => this.getSensorState())
 
 		services.push(this.sensorService)
 	}
@@ -118,15 +118,15 @@ delaySwitch.prototype.getServices = function () {
 
 }
 
-delaySwitch.prototype.setOn = function (value, callback) {
+delaySwitch.prototype.setOn = function (value) {
 
 	if (value === false) {
 		this.log.easyDebug('Stopping the Timer')
 		this.switchOn = false
 		clearTimeout(this.timer)
 		this.sensorTriggered = 0
-		if (!this.disableSensor) 
-			this.sensorService.getCharacteristic(this.sensorCharacteristic).updateValue(this.getSensorState())
+		if (!this.disableSensor)
+			this.sensorService.updateCharacteristic(this.sensorCharacteristic, this.getSensorState())
 	} else if (value === true) {
 		this.switchOn = true
 		clearTimeout(this.timer)
@@ -134,25 +134,24 @@ delaySwitch.prototype.setOn = function (value, callback) {
 			this.log.easyDebug('Starting the Timer')
 			this.timer = setTimeout(function () {
 				this.log.easyDebug('Time is Up!')
-				this.switchService.getCharacteristic(Characteristic.On).updateValue(false)
+				this.switchService.updateCharacteristic(Characteristic.On, false)
 				this.switchOn = false
 
 				if (!this.disableSensor) {
 					this.sensorTriggered = 1
-					this.sensorService.getCharacteristic(this.sensorCharacteristic).updateValue(this.getSensorState())
+					this.sensorService.updateCharacteristic(this.sensorCharacteristic, this.getSensorState())
 					this.log.easyDebug('Triggering Sensor')
 					setTimeout(function () {
 						this.sensorTriggered = 0
-						this.sensorService.getCharacteristic(this.sensorCharacteristic).updateValue(this.getSensorState())
+						this.sensorService.updateCharacteristic(this.sensorCharacteristic, this.getSensorState())
 					}.bind(this), 3000)
 				}
 
 			}.bind(this), this.delayTime)
 		}
 	}
-	callback()
 }
 
-delaySwitch.prototype.getOn = function (callback) {
-	callback(null, this.switchOn)
+delaySwitch.prototype.getOn = function () {
+	return this.switchOn
 }
